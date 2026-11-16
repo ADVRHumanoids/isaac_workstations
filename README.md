@@ -13,11 +13,13 @@ export HHCM_APP="$PWD"
 docker build -t hhcm-isaaclab:v3.0.0-beta2 .
 ```
 
-Create a workspace outside this repository containing `machines.json`:
+Copy the workstation list into your workspace, then set `user` to your SSH username:
 
-```json
-{"user": "your-user", "hosts": {"gpu1": "gpu1.example.org"}}
+```bash
+cp machines.example.json /path/to/workspace/machines.json
 ```
+
+The supplied hosts and monitor require access to the HHCM network.
 
 Each project folder needs `source/`, `scripts/rsl_rl/{train,play}.py`, `assets/`
 and these launchers:
@@ -30,7 +32,6 @@ exec bash "$HHCM_APP/pipeline.sh" play "$(dirname "$(realpath "$0")")" "$@" --nu
 ```
 
 The extension defaults to `source/isaac_lab_tutorial`; set `HHCM_ISAAC_EXTENSION` for another name.
-For shared machine status, add `monitor_url` to `machines.json`.
 
 After accepting NVIDIA's terms, launch:
 
