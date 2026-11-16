@@ -20,6 +20,7 @@ cp machines.example.json /path/to/workspace/machines.json
 ```
 
 The supplied hosts and monitor require access to the HHCM network.
+The app checks the monitor for new workstations and asks before adding them to `machines.json`.
 
 Your workspace contains the machine list and your Isaac Lab projects, separate
 from this app:
