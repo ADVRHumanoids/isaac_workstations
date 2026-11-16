@@ -731,6 +731,56 @@ lab_app = lab
 
 
 class LabAppTests(WorkspaceTest):
+    def test_discovered_machines_validate_deduplicate_and_preserve_config(self):
+        path = lab.ROOT / 'machines.json'
+        config = {'user': 'alice', 'monitor_url': 'http://monitor/global_stats',
+                  'hosts': {'ted': 'other@TED', 'new-ws': 'existing'}}
+        path.write_text(json.dumps(config))
+        self.assertEqual(lab.new_machines(['ted', 'new.ws', '-bad', 'user@host', 'bad/path'],
+                                         lab.inventory()), ['new.ws'])
+        hosts = lab.add_machines(['ted', 'new.ws', 'new-ws', '-bad'])
+        saved = json.loads(path.read_text())
+        self.assertEqual(saved, {**config, 'hosts': {**config['hosts'],
+                                                   'new-ws-2': 'new-ws', 'new-ws-3': 'new.ws'}})
+        self.assertEqual(hosts['new-ws-3'], 'alice@new.ws')
+        lab.add_machines(['new.ws'])
+        self.assertEqual(json.loads(path.read_text()), saved)
+        with patch.object(Path, 'replace', side_effect=OSError('read only')):
+            with self.assertRaises(OSError):
+                lab.add_machines(['another'])
+        self.assertEqual(json.loads(path.read_text()), saved)
+        self.assertEqual(sorted(p.name for p in lab.ROOT.iterdir()), ['kyon_training', 'machines.json'])
+
+    def test_new_machine_prompt_cancel_accept_and_save_error(self):
+        async def scenario():
+            path = lab.ROOT / 'machines.json'
+            path.write_text(json.dumps({'user': 'alice', 'hosts': {'ted': 'ted'}}))
+            with patch.object(lab.LabApp, 'load_stats'), patch.object(lab.LabApp, 'load_runs') as reload_runs:
+                app = lab.LabApp(lab.inventory(), 'kyon_training')
+                async with app.run_test(size=(140, 40)) as pilot:
+                    stats = {'ted': ('free',) + ('—',) * 5, 'new.ws': ('free',) + ('—',) * 5}
+                    app.set_stats(stats, None)
+                    await pilot.pause()
+                    self.assertIsInstance(app.screen, lab.Ask)
+                    await pilot.click('#cancel')
+                    app.set_stats(stats, None)
+                    self.assertEqual(len(app.screen_stack), 1)
+                    self.assertNotIn('new.ws', path.read_text())
+                    app.offered_machines.clear()
+                    app.set_stats(stats, None)
+                    await pilot.pause()
+                    await pilot.click('#ok')
+                    self.assertEqual(app.hosts['new-ws'], 'alice@new.ws')
+                    self.assertEqual(app.main('#machines').row_count, 2)
+                    self.assertEqual(json.loads(path.read_text())['hosts']['new-ws'], 'new.ws')
+                    self.assertGreaterEqual(reload_runs.call_count, 2)
+                    with patch.object(lab, 'add_machines', side_effect=OSError('read only')):
+                        app.offered_machines.add('another')
+                        app.accept_machines(['another'])
+                    self.assertNotIn('another', app.hosts)
+                    self.assertNotIn('another', app.offered_machines)
+        asyncio.run(scenario())
+
     def test_background_job_uses_standalone_script_and_workspace(self):
         app = lab.LabApp({'gpu': 'user@gpu'}, 'kyon_training')
         app.snapshots = {'gpu': {'error': 'password required'}}
