@@ -21,15 +21,37 @@ cp machines.example.json /path/to/workspace/machines.json
 
 The supplied hosts and monitor require access to the HHCM network.
 
-Each project folder needs `source/`, `scripts/rsl_rl/{train,play}.py`, `assets/`
-and these launchers:
+Your workspace contains the machine list and your Isaac Lab projects, separate
+from this app:
+
+```text
+workspace/
+├── machines.json
+└── my_robot/
+    ├── source/              # Robot environments, rewards and training settings
+    ├── scripts/rsl_rl/
+    │   ├── train.py         # Training code
+    │   └── play.py          # Replay code
+    ├── assets/              # Robot models
+    ├── train.sh             # Connects training to this app
+    └── play.sh              # Connects replay to this app
+```
+
+Use the Python code and assets from your existing Isaac Lab project.
+Create `train.sh` inside that project with:
 
 ```bash
-# train.sh
 exec bash "$HHCM_APP/pipeline.sh" deploy "$(dirname "$(realpath "$0")")" "$@"
-# play.sh
+```
+
+Create `play.sh` alongside it with:
+
+```bash
 exec bash "$HHCM_APP/pipeline.sh" play "$(dirname "$(realpath "$0")")" "$@" --num_envs 1 --device cpu --viz viser --real-time agent.device=cpu
 ```
+
+`deploy` prepares the selected workstation and starts training in Docker.
+`play` opens a saved policy locally. The app calls these launchers for you.
 
 The pipeline loads the training package in `source/isaac_lab_tutorial`.
 If your package has a different name, set `HHCM_ISAAC_EXTENSION` to that name.
