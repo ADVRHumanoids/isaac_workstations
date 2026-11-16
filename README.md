@@ -31,7 +31,8 @@ exec bash "$HHCM_APP/pipeline.sh" deploy "$(dirname "$(realpath "$0")")" "$@"
 exec bash "$HHCM_APP/pipeline.sh" play "$(dirname "$(realpath "$0")")" "$@" --num_envs 1 --device cpu --viz viser --real-time agent.device=cpu
 ```
 
-The extension defaults to `source/isaac_lab_tutorial`; set `HHCM_ISAAC_EXTENSION` for another name.
+The pipeline loads the training package in `source/isaac_lab_tutorial`.
+If your package has a different name, set `HHCM_ISAAC_EXTENSION` to that name.
 
 After accepting NVIDIA's terms, launch:
 
