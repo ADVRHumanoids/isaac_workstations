@@ -13,6 +13,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from urllib.request import urlopen
 
@@ -90,6 +91,34 @@ def inventory():
             raise ValueError(f'Invalid machine entry: {name!r}')
         hosts[name] = destination
     return hosts
+
+
+def new_machines(stats, hosts):
+    known = {host.split('@')[-1].lower() for host in hosts.values()}
+    return sorted(host for host in stats if host.lower() not in known
+                  and re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]*', host))
+
+
+def add_machines(hostnames):
+    path = ROOT / 'machines.json'
+    config = json.loads(path.read_text())
+    hosts = config['hosts']
+    for host in new_machines(hostnames, hosts):
+        alias = host.replace('.', '-')
+        base, suffix = alias, 2
+        while alias in hosts:
+            alias, suffix = f'{base}-{suffix}', suffix + 1
+        hosts[alias] = host
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=ROOT, delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(json.dumps(config, indent=2) + '\n')
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return inventory()
 
 
 def ssh(host, interactive=False):
@@ -1098,6 +1127,7 @@ class LabApp(App):
         self.stats, self.stats_error, self.snapshots = {}, None, {}
         self.rows, self.filter_text, self.paused = [], '', False
         self.jobs, self.current, self.shown_lines = [], None, 0
+        self.offered_machines = set()
 
     def main(self, selector, kind=None):
         """Widgets of the main screen (App.query_one would search an open dialog instead)."""
@@ -1145,6 +1175,24 @@ class LabApp(App):
     def set_stats(self, stats, error):
         self.stats, self.stats_error = stats, error
         self.draw()
+        new = [host for host in new_machines(stats, self.hosts) if host not in self.offered_machines]
+        if not error and new and len(self.screen_stack) == 1:
+            self.offered_machines.update(new)
+            self.push_screen(Ask('New workstations found',
+                                 'Add these to machines.json using your configured SSH user?\n\n'
+                                 + '\n'.join(new), ok='Add workstations'),
+                             lambda answer: self.accept_machines(new) if answer else None)
+
+    def accept_machines(self, hostnames):
+        try:
+            self.hosts = add_machines(hostnames)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            self.offered_machines.difference_update(hostnames)
+            self.notify(f'Could not save workstations: {exc}', severity='error')
+            return
+        self.draw()
+        self.load_runs()
+        self.notify('Workstations saved to machines.json.')
 
     @work(thread=True, exclusive=True, group='runs')
     def load_runs(self):
