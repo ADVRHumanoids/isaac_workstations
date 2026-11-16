@@ -54,9 +54,6 @@ exec bash "$HHCM_APP/pipeline.sh" play "$(dirname "$(realpath "$0")")" "$@" --nu
 `deploy` prepares the selected workstation and starts training in Docker.
 `play` opens a saved policy locally. The app calls these launchers for you.
 
-The pipeline loads the training package in `source/isaac_lab_tutorial`.
-If your package has a different name, set `HHCM_ISAAC_EXTENSION` to that name.
-
 After accepting NVIDIA's terms, launch:
 
 ```bash
