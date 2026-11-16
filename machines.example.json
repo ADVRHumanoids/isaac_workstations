@@ -1,0 +1,16 @@
+{
+  "user": "your-user",
+  "hosts": {
+    "fred": "hhcm-fred-ws-2404",
+    "scot": "hhcm-scot-ws-2404",
+    "ted": "hhcm-ted-ws-2404",
+    "davinci": "davinci",
+    "dlv": "DLV",
+    "9950x": "hhcm-9950x-ws-2404",
+    "bill": "hhcm-bill-ws-2404",
+    "frank": "hhcm-frank-ws-2404",
+    "pilot": "hhcm-pilot-ws-2404",
+    "tr": "hhcm-tr-ws-2404"
+  },
+  "monitor_url": "http://davinci.iit.local:9423/global_stats"
+}
